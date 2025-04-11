@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Data Chatbot</title>
+    <style>
+        /* --- Basic Reset & Font --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Layout --- */
+        .container {
+            flex: 1; /* Fill remaining vertical space */
+            display: flex;
+            height: calc(100vh - 50px); /* Adjust based on header/footer */
+            max-height: 100vh;
+            overflow: hidden; /* Prevent container scroll */
+            padding: 16px;
+            gap: 16px; /* Space between sections */
+        }
+        .chat-section {
+            flex: 7; /* 70% width */
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden; /* Contains children */
+        }
+        .advice-section {
+            flex: 3; /* 30% width */
+            background: linear-gradient(135deg, #2c3e50, #4a5568);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Contains children */
+        }
+
+        /* --- Headers --- */
+        .header, .advice-header {
+            padding: 12px 16px;
+            text-align: center;
+            border-bottom: 1px solid #e1e4e8;
+            flex-shrink: 0; /* Prevent header shrinking */
+        }
+        .advice-header {
+            color: #ffffff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .header h1 { font-size: 22px; color: #333; }
+        .advice-header h2 { font-size: 18px; }
+
+        /* --- Content Areas (Scrollable) --- */
+        .chat-container, .advice-container {
+            flex: 1; /* Fill available space */
+            overflow-y: auto; /* Enable vertical scroll */
+            padding: 16px;
+        }
+        .advice-container {
+            padding-bottom: 16px; /* Ensure space at bottom */
+        }
+
+        /* --- Chat Bubbles --- */
+        .chat-bubble {
+            display: flex;
+            margin-bottom: 15px;
+            max-width: 90%; /* Limit bubble width */
+            animation: fadeIn 0.3s ease;
+        }
+        .chat-bubble.user {
+            justify-content: flex-end;
+            margin-left: auto; /* Push to right */
+        }
+        .chat-bubble.bot {
+            justify-content: flex-start;
+            margin-right: auto; /* Push to left */
+        }
+        .bubble-content {
+            padding: 10px 15px;
+            border-radius: 18px;
+            word-wrap: break-word; /* Wrap long words */
+            line-height: 1.4;
+        }
+        .user .bubble-content {
+            background-color: #0084ff;
+            color: white;
+        }
+        .bot .bubble-content {
+            background-color: #e9eaeb;
+            color: #333;
+        }
+        /* Style for error messages from bot */
+        .bot.error .bubble-content {
+            background-color: #ffebee; /* Light red background */
+            color: #c62828; /* Darker red text */
+            border: 1px solid #ef9a9a;
+        }
+
+
+        /* --- Typing Indicator --- */
+        .typing-indicator {
+            display: flex;
+            padding: 12px 15px;
+            border-radius: 18px;
+            background-color: #e9eaeb;
+            align-items: center;
+        }
+        .typing-dot {
+            height: 8px; width: 8px; border-radius: 50%;
+            background-color: #666; margin: 0 2px;
+            animation: typing 1.5s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
+
+        /* --- Code Blocks (Hidden) --- */
+        .code-block { display: none; }
+
+
+        /* --- Input Area --- */
+        .input-area {
+            display: flex;
+            padding: 10px 16px;
+            border-top: 1px solid #e1e4e8;
+            background-color: #fff; /* Ensure bg */
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+        .message-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background-color: #f0f2f5;
+            font-size: 15px;
+            margin-right: 10px;
+            resize: none; /* Prevent manual resize */
+            line-height: 1.4;
+        }
+        .message-input:focus {
+            outline: none;
+            border-color: #0084ff;
+            box-shadow: 0 0 0 2px rgba(0, 132, 255, 0.2);
+        }
+        .send-button {
+            padding: 0 20px;
+            background-color: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .send-button:hover:not(:disabled) { background-color: #0073e6; }
+        .send-button:disabled { background-color: #cccccc; cursor: not-allowed; }
+
+        /* --- Advice Section --- */
+        .advice-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4fd1c5;
+            animation: slideIn 0.5s ease;
+        }
+        .advice-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #a7f3d0; /* Lighter color */
+            word-wrap: break-word;
+        }
+        .advice-content {
+            line-height: 1.5;
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+        .light-bulb { font-size: 18px; margin-right: 8px; vertical-align: middle; }
+        #no-advice {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+         pre {
+             white-space: pre-wrap; /* Ensures wrapping */
+             word-wrap: break-word; /* Breaks long words/lines */
+             font-family: inherit; /* Use message font unless code block */
+             margin: 0; /* Reset margin */
+         }
+
+        .plots-link {
+            display: block; /* Make it take its own line below the header */
+            margin-top: 5px; /* Add some space above */
+            font-size: 0.9em; /* Slightly smaller font */
+            color: #e0e0e0; /* Light color for dark background */
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .plots-link:hover {
+            color: #ffffff; /* Brighter on hover */
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="chat-section">
+            <div class="header">
+                <h1>Sales Data Assistant</h1>
+            </div>
+            <div class="chat-container" id="chat-container">
+                <!-- Initial Bot Message -->
+                <div class="chat-bubble bot">
+                    <div class="bubble-content">
+                        Hi there! Ask me questions about your sales data (e.g., "Total revenue?", "Top products by category?", "Sales per region?").
+                    </div>
+                </div>
+            </div>
+            <div class="input-area">
+                <input type="text" class="message-input" id="message-input" placeholder="Ask about sales data..." autofocus>
+                <button class="send-button" id="send-button" title="Send Message">Send</button>
+            </div>
+        </div>
+
+        <!-- Advice Section -->
+        <!-- Advice Section -->
+        <div class="advice-section">
+            <div class="advice-header">
+                <h2>💡 AI Business Advisor</h2>
+                 <!-- ++ NEW LINK ADDED HERE ++ -->
+                <a href="{{ url_for('plots_page') }}" class="plots-link" target="_blank">View Data Visualizations →</a>
+                 <!-- ++ END NEW LINK ++ -->
+            </div>
+            <div class="advice-container" id="advice-container">
+                <div id="no-advice">Insights based on your queries will appear here.</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // --- DOM Element References ---
+        const chatContainer = document.getElementById('chat-container');
+        const adviceContainer = document.getElementById('advice-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const noAdvicePlaceholder = document.getElementById('no-advice');
+
+        // --- State ---
+        let isProcessing = false;
+
+        // --- Helper Functions ---
+
+        /** Scrolls a container element to its bottom */
+        function scrollToBottom(element) {
+            element.scrollTop = element.scrollHeight;
+        }
+
+
+        function addMessage(text, isUser, isError = false) {
+            const bubble = document.createElement('div');
+            // Add 'error' class for bot error messages for specific styling
+            bubble.className = `chat-bubble ${isUser ? 'user' : 'bot'}${isError ? ' error' : ''}`;
+
+            const content = document.createElement('div');
+            content.className = 'bubble-content';
+
+            // Use <pre> for the main text to respect newlines
+            const textElement = document.createElement('pre');
+            textElement.textContent = text; // Set text content safely
+            content.appendChild(textElement);
+
+            bubble.appendChild(content);
+            chatContainer.appendChild(bubble);
+            scrollToBottom(chatContainer);
+        }
+
+
+        /** Adds a typing indicator bubble to the chat */
+        function addTypingIndicator() {
+            // Simplified addTypingIndicator from previous version
+            const existingIndicator = document.getElementById('typing-indicator');
+            if (existingIndicator) return;
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble bot';
+            bubble.id = 'typing-indicator';
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            bubble.appendChild(indicator);
+            chatContainer.appendChild(bubble);
+            scrollToBottom(chatContainer);
+        }
+
+        /** Removes the typing indicator bubble from the chat */
+        function removeTypingIndicator() {
+            // Simplified removeTypingIndicator from previous version
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        /** Adds an advice card to the advice container. */
+        function addAdvice(adviceText, queryText) {
+            // Simplified addAdvice from previous version
+            const placeholder = document.getElementById('no-advice');
+            if(placeholder) placeholder.remove();
+            const adviceCard = document.createElement('div');
+            adviceCard.className = 'advice-card';
+            const title = document.createElement('div');
+            title.className = 'advice-title';
+            const safeQuery = queryText.replace(/</g, "<").replace(/>/g, ">");
+            title.innerHTML = `<span class="light-bulb">💡</span> Based on: "${safeQuery}"`;
+            const content = document.createElement('div');
+            content.className = 'advice-content';
+            content.textContent = adviceText;
+            adviceCard.appendChild(title);
+            adviceCard.appendChild(content);
+            adviceContainer.prepend(adviceCard);
+             const maxAdviceCards = 10; // Limit advice cards shown
+             while (adviceContainer.children.length > maxAdviceCards) {
+                 adviceContainer.removeChild(adviceContainer.lastChild);
+             }
+        }
+
+        // --- Core Send Message Logic ---
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+
+            messageInput.value = '';
+            isProcessing = true;
+            sendButton.disabled = true;
+            sendButton.textContent = '...';
+
+            addMessage(message, true); // Show user message
+            addTypingIndicator();
+
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ query: message }),
+                });
+
+                removeTypingIndicator(); // Remove thinking indicator
+
+                // Always try to parse JSON, even for non-ok responses, as backend sends JSON errors
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Handle cases where response is not JSON (e.g., gateway errors)
+                    console.error("Failed to parse response JSON:", e);
+                    addMessage(`Server Error: Received non-JSON response (Status: ${response.status})`, false, true); // Display as error
+                    return; // Exit early
+                }
+
+
+                if (!response.ok) {
+                    // Handle HTTP errors (4xx, 5xx) using the JSON error message if available
+                    const errorMsg = data.error || `Request failed with status: ${response.status}`;
+                    console.error("Backend Error Response:", data);
+                    addMessage(errorMsg, false, true); // Display the error from backend, mark as error
+                } else {
+                    // Handle successful response (2xx)
+                    if (data.error) {
+                        // Handle application-level errors within a 2xx response (less common)
+                         console.error("Backend Application Error:", data);
+                         addMessage(data.error, false, true); // Display app error, mark as error
+                    } else {
+                        // --- Success: Display Results & Advice ---
+                        const botResponseText = data.result || "(No specific output was generated)";
+                        addMessage(botResponseText, false); // Show result (not marked as error)
+
+                        // Check for valid advice before displaying
+                        const advice = data.advice;
+                        if (advice && !advice.toLowerCase().includes("unable to generate") && !advice.toLowerCase().includes("no actionable result") && !advice.toLowerCase().includes("could not generate")) {
+                             addAdvice(advice, data.query);
+                         } else if (advice) {
+                             console.log("Received non-actionable advice:", advice); // Log non-actionable advice
+                         }
+                    }
+                }
+
+            } catch (error) {
+                // Handle network errors (fetch couldn't complete)
+                removeTypingIndicator();
+                console.error('Network or Fetch Error:', error);
+                addMessage('Network Error: Could not connect to the assistant. Please check your connection.', false, true); // Mark as error
+            } finally {
+                // --- UI Updates: End Processing ---
+                isProcessing = false;
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                messageInput.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // --- Initial Setup ---
+        window.onload = () => {
+            messageInput.focus();
+        };
+
+    </script>
+</body>
+</html>

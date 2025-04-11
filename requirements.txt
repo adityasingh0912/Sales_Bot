@@ -1,0 +1,8 @@
+requests
+numpy
+flask
+Flask-Cors
+python-dotenv
+groq
+deepgram-sdk
+astrapy
