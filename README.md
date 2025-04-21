@@ -1,7 +1,6 @@
 # Sales_Bot
-Sure! Here's the full content for `README.md` that you can copy and paste directly into your file:
 
-```markdown
+
 # 🧠 Astra DB + Groq + Flask AI Assistant
 
 This project is a Flask web application that connects to **Astra DB** and uses **Groq's LLM (Mixtral-8x7B)** to generate Python code and business insights based on **natural language queries** over your **sales data**. It also visualizes results using **Matplotlib** and **Seaborn**.
@@ -127,6 +126,3 @@ astra-groq-assistant/
 ## 🪪 License
 
 This project is licensed under the MIT License.
-```
-
-Let me know if you want the image links updated to public URLs or want a version tailored for GitHub Pages.
